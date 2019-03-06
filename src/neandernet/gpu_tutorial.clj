@@ -8,6 +8,7 @@
                            sort-by-cl-version devices with-default-1 command-queue-1
                            *context* *command-queue* *platform* finish!
                            set-default-1! release-context!]]]
+;            [uncomplicate.neanderthal.internal.device.clblast :refer [clblast-double clblast-float]]
             [uncomplicate.neanderthal
              [core :refer [asum axpy! scal! transfer! transfer mm! rk! view-ge vctr ge entry!]]
              [native :refer [native-double native-float dv dge]]  
@@ -38,6 +39,7 @@
   (let-release [w (ge factory out-dim in-dim)
                 bias (vctr factory out-dim)]
     (->FullyConnectedInference w bias activ-fn)))
+
 ;a general function that takes the factory (hardware implemenetaion (cpu or gpu))
 (defn this-particular-network [factory]
   (with-release [x (ge factory 2 2 [0.3 0.9 0.3 0.9])
@@ -52,58 +54,62 @@
     (transfer! [0.3] (bias layer-2))
     (transfer (layer-2 (layer-1 x ones a-1) ones a-2))))
 
-;(set-default-1!)
-;(set-engine!)
+(let [pform (first (platforms))
+      dev (first (devices pform))] 
+  (with-release [
+                ctx (context [dev]) 
+                q (command-queue-1 ctx dev) 
+                ]
+   (with-platform pform
+     (with-context ctx 
+       (with-queue q
+         (with-release [factory (opencl-float ctx q)] 
+           (with-release [
+                          x (ge factory 10000 10000)
+                          ones (entry! (vctr factory 10000) 1)
+                          layer-1 (fully-connected factory tanh! 10000 5000)
+                          a1 (ge factory 5000 10000)
+                          layer-2 (fully-connected factory sigmoid! 5000 1000)
+                          a2 (ge factory 1000 10000)
+                          layer-3 (fully-connected factory sigmoid! 1000 10)
+                          a3 (ge factory 10 10000)
+                          ]
+             ;(layer-1 x ones a1) ;; The first time a BLAS operation is used in OpenCL might incur initialization cost.
 
-;(release-context!)
+             (time
+               (do
+                 (layer-3 (layer-2 (layer-1 x ones a1) ones a2) ones a3)
+                 (finish! q)
+                 )))))))))
 
 
-;(with-default-1
-;  (with-default-engine
-;    (with-release [opencl-factory (opencl-float *context* *command-queue*)]
-;      (this-particular-network opencl-factory))))
+(let [platform (first (platforms))
+        dev (second (devices platform))
+        _ (println (name-info dev))
+        _ (println (name-info platform))
+        _ (set-platform! platform)
+        ctx (context [dev])
+        _ (set-context! ctx)
+        q (command-queue-1 ctx dev )
+        _ (set-queue! q)
+       factory (opencl-float ctx q) 
+       ;_ (set-engine! factory q)
+       ]
+         (with-release [f factory]
+             (with-release [
+                           x (ge factory 1000 1000)
+                           ones (entry! (vctr factory 1000) 1)
+                           layer-1 (fully-connected factory tanh! 1000 500)
+                           a1 (ge factory 500 1000)
+                           layer-2 (fully-connected factory sigmoid! 500 100)
+                           a2 (ge factory 100 1000)
+                           layer-3 (fully-connected factory sigmoid! 100 1)
+                           a3 (ge factory 1 1000)]
+              ;(layer-1 x ones a1) ;; The first time a BLAS operation is used in OpenCL might incur initialization cost.
 
-(with-platform (first (platforms))
-     (let [dev (second (sort-by-cl-version (devices)))]
-       (with-context (context [dev])
-         (with-queue (command-queue-1 dev)
-          (with-release [factory (opencl-float *context* *command-queue*)]
-            (with-release [x (ge factory 10000 10000)
-                    ones (entry! (vctr factory 10000) 1)
-                    layer-1 (fully-connected factory tanh! 10000 5000)
-                    a1 (ge factory 5000 10000)
-                    layer-2 (fully-connected factory sigmoid! 5000 1000)
-                    a2 (ge factory 1000 10000)
-                    layer-3 (fully-connected factory sigmoid! 1000 10)
-                    a3 (ge factory 10 10000)]
-       ;(layer-1 x ones a1) ;; The first time a BLAS operation is used in OpenCL might incur initialization cost.
-         (do
-           (transfer (layer-3 (layer-2 (layer-1 x ones a1) ones a2) ones a3))
-           ))) ))))
+              (time
+                (do
+                  (layer-3 (layer-2 (layer-1 x ones a1) ones a2) ones a3)
+                  (finish! q))) 
+              )) )
 
-;(with-default-1
-;  (with-default-engine
-;    (with-release [factory (opencl-float *context* *command-queue*)]
-;     (with-release [x (ge factory 10000 10000)
-;                    ones (entry! (vctr factory 10000) 1)
-;                    layer-1 (fully-connected factory tanh! 10000 5000)
-;                    a1 (ge factory 5000 10000)
-;                    layer-2 (fully-connected factory sigmoid! 5000 1000)
-;                    a2 (ge factory 1000 10000)
-;                    layer-3 (fully-connected factory sigmoid! 1000 10)
-;                    a3 (ge factory 10 10000)]
-;       ;(layer-1 x ones a1) ;; The first time a BLAS operation is used in OpenCL might incur initialization cost.
-;         (do
-;           (transfer (layer-3 (layer-2 (layer-1 x ones a1) ones a2) ones a3))
-;           )))))
-;("Intel(R) Core(TM) i5-7Y54 CPU @ 1.20GHz" "Intel(R) HD Graphics 615")
-;("Intel(R) Core(TM) i5-7Y54 CPU @ 1.20GHz" "Intel(R) HD Graphics 615")
-;(map name-info (devices (first (platforms))))
-(def intel-platform (first (platforms)))
-(def my-intel-gpu (second (devices intel-platform)))
-(def ctx (context [my-intel-gpu]))
-(def cq (command-queue-1 ctx my-intel-gpu))
-;(set-context! ctx)
-;(set-queue! cq)
-;(def device-name "Intel(R) HD Graphics 615")
-;(def devices [ (second (devices (first (platforms)))) ])

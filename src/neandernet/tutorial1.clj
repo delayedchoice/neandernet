@@ -1,4 +1,6 @@
 (ns neandernet.tutorial1
+  (:require [uncomplicate.clojurecl.core :refer :all]
+            [uncomplicate.clojurecl.info :refer :all])  
   (:require [uncomplicate.commons.core :refer [with-release let-release Releaseable release]]
             [uncomplicate.neanderthal
               [native :refer [dv dge]]
