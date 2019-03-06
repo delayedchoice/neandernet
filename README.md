@@ -1,4 +1,5 @@
 # neandernet
+https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein
 
 A Clojure library designed to ... well, that part is up to you.
 
