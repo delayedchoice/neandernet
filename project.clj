@@ -6,6 +6,7 @@
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [uncomplicate/neanderthal "0.22.0"]
                  [criterium "0.4.4"]
+;                 [lein-cljfmt "0.6.4"]
                  [org.slf4j/slf4j-simple "1.7.5"]
                  ]
   :exclusions [[org.jcuda/jcuda-natives :classifier "apple-x86_64"]

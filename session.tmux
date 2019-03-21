@@ -10,7 +10,6 @@ tmux send-keys -t development 'n' C-m
 # START:hsplit
 tmux split-window -v -t development
 tmux selectp -t 2 
-tmux send-keys -t development 'lein repl' C-m
 # END:hsplit
 # START:layout
 tmux select-layout -t development main-horizontal
@@ -20,6 +19,7 @@ tmux select-layout -t development main-horizontal
 # END:keystopane
 # START:newwindow
 tmux new-window -n console -t development
+tmux send-keys -t development 'lein repl' C-m
 #tmux send-keys -t development:2 'cd ~/devproject' C-m
 # END:newwindow
 # START:selectwindow

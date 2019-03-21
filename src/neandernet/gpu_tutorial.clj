@@ -54,62 +54,61 @@
     (transfer! [0.3] (bias layer-2))
     (transfer (layer-2 (layer-1 x ones a-1) ones a-2))))
 
-(let [pform (first (platforms))
-      dev (first (devices pform))] 
-  (with-release [
-                ctx (context [dev]) 
-                q (command-queue-1 ctx dev) 
-                ]
-   (with-platform pform
-     (with-context ctx 
-       (with-queue q
-         (with-release [factory (opencl-float ctx q)] 
-           (with-release [
-                          x (ge factory 10000 10000)
-                          ones (entry! (vctr factory 10000) 1)
-                          layer-1 (fully-connected factory tanh! 10000 5000)
-                          a1 (ge factory 5000 10000)
-                          layer-2 (fully-connected factory sigmoid! 5000 1000)
-                          a2 (ge factory 1000 10000)
-                          layer-3 (fully-connected factory sigmoid! 1000 10)
-                          a3 (ge factory 10 10000)
-                          ]
-             ;(layer-1 x ones a1) ;; The first time a BLAS operation is used in OpenCL might incur initialization cost.
+;(set-default-1!)
+;(set-engine!)
+;;;
+;;;;(def gpu-x (clv 1 -2 5))
+;;;;(asum gpu-x)
+;;;
+;(release-context!)
 
-             (time
-               (do
-                 (layer-3 (layer-2 (layer-1 x ones a1) ones a2) ones a3)
-                 (finish! q)
-                 )))))))))
-
-
-(let [platform (first (platforms))
-        dev (second (devices platform))
-        _ (println (name-info dev))
-        _ (println (name-info platform))
-        _ (set-platform! platform)
+;this one works!
+#_(with-platform (first (platforms))
+  (let [dev (second (sort-by-cl-version (devices)))
         ctx (context [dev])
-        _ (set-context! ctx)
-        q (command-queue-1 ctx dev )
-        _ (set-queue! q)
-       factory (opencl-float ctx q) 
-       ;_ (set-engine! factory q)
-       ]
-         (with-release [f factory]
-             (with-release [
-                           x (ge factory 1000 1000)
-                           ones (entry! (vctr factory 1000) 1)
-                           layer-1 (fully-connected factory tanh! 1000 500)
-                           a1 (ge factory 500 1000)
-                           layer-2 (fully-connected factory sigmoid! 500 100)
-                           a2 (ge factory 100 1000)
-                           layer-3 (fully-connected factory sigmoid! 100 1)
-                           a3 (ge factory 1 1000)]
-              ;(layer-1 x ones a1) ;; The first time a BLAS operation is used in OpenCL might incur initialization cost.
-
-              (time
+        q   (command-queue-1 ctx dev)]
+    (with-context ctx
+      (with-queue q
+        (with-default-engine
+          (with-release [factory (opencl-float ctx q)
+                         x (ge factory 1000 1000)
+                         ones (entry! (vctr factory 1000) 1)
+                         layer-1 (fully-connected factory tanh! 1000 500)
+                         a1 (ge factory 500 1000)
+                         layer-2 (fully-connected factory sigmoid! 500 100)
+                         a2 (ge factory 100 1000)
+                         layer-3 (fully-connected factory sigmoid! 100 1)
+                         a3 (ge factory 1 1000)
+                         
+                         ]
+           (time
                 (do
-                  (layer-3 (layer-2 (layer-1 x ones a1) ones a2) ones a3)
-                  (finish! q))) 
-              )) )
+                  (transfer (layer-3 (layer-2 (layer-1 x ones a1) ones a2) ones a3))
+                  #_(finish!))) 
+            )
+          )))))
 
+(with-platform (first (platforms))
+  (let [dev (second (devices))
+        ctx (context [dev])
+        q   (command-queue-1 ctx dev)]
+    (with-context ctx
+      (with-queue q
+        (with-default-engine
+        (with-release [factory (opencl-float ctx q)
+                       x (ge factory 1000 1000)
+                       ones (entry! (vctr factory 1000) 1)
+                       layer-1 (fully-connected factory tanh! 1000 500)
+                       a1 (ge factory 500 1000)
+                       layer-2 (fully-connected factory sigmoid! 500 100)
+                       a2 (ge factory 100 1000)
+                       layer-3 (fully-connected factory sigmoid! 100 1)
+                       a3 (ge factory 1 1000)
+                       ]
+          (layer-1 x ones a1) ;; The first time a BLAS operation is used in OpenCL might incur initialization cost.
+          (finish!)
+          (time
+           (do
+             (transfer (layer-3 (layer-2 (layer-1 x ones a1) ones a2) ones a3) )
+             #_(finish!))))   
+          )))))
